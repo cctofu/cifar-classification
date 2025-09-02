@@ -1,0 +1,251 @@
+########################
+# Missing Files
+########################
+# .DS_Store
+
+########################
+# Additional Files
+########################
+# cifar-10_data
+# .git
+
+########################
+# Filled Code
+########################
+# ../codes/mlp/model.py:1
+    def __init__(self, num_features, momentum=1e-2, eps=1e-5):
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.momentum = momentum
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(num_features, device=device))
+        self.bias = nn.Parameter(torch.zeros(num_features, device=device))
+        self.register_buffer('running_mean', torch.zeros(num_features, device=device))
+        self.register_buffer('running_var', torch.ones(num_features, device=device))
+        if not self.training:
+            BN = (input - self.running_mean) / torch.sqrt(self.running_var + self.eps)
+            return self.weight * BN + self.bias
+
+        input_mean = input.mean([0])
+        input_var = input.var([0], unbiased=False)
+
+        self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * input_mean
+        self.running_var = (1 - self.momentum) * self.running_var + self.momentum * input_var
+
+        BN = (input - input_mean) / torch.sqrt(input_var + self.eps)
+        res = self.weight * BN + self.bias
+
+        return res
+
+# ../codes/mlp/model.py:2
+        if self.training is False:
+            return input
+        return input * torch.bernoulli((1-self.p)*torch.ones_like(input,device=input.device))
+
+# ../codes/mlp/model.py:3
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.bn1 = nn.BatchNorm1d(hidden_dim)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(drop_rate)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+# ../codes/mlp/model.py:4
+        x = self.fc1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        logits = self.fc2(x)
+
+# ../codes/cnn/model.py:1
+    def __init__(self, num_features, momentum=1e-2, eps=1e-5):
+        super(BatchNorm2d, self).__init__()
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.momentum = momentum
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(num_features).to(device))
+        self.bias = nn.Parameter(torch.zeros(num_features).to(device))
+        self.register_buffer('running_mean', torch.zeros(num_features).to(device))
+        self.register_buffer('running_var', torch.ones(num_features).to(device))
+    def forward(self, input):
+        if not self.training:
+            BN = (input - self.running_mean.view(1, -1, 1, 1)) / torch.sqrt(self.running_var.view(1, -1, 1, 1) + self.eps)
+            return BN * self.weight.view(1, -1, 1, 1) + self.bias.view(1, -1, 1, 1)
+        input_mean = input.mean([0, 2, 3])
+        input_var = input.var([0, 2, 3], unbiased=False)
+
+        self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * input_mean
+        self.running_var = (1 - self.momentum) * self.running_var + self.momentum * input_var
+
+        BN = (input - input_mean.view(1, -1, 1, 1)) / torch.sqrt(input_var.view(1, -1, 1, 1) + self.eps)
+        res = BN * self.weight.view(1, -1, 1, 1) + self.bias.view(1, -1, 1, 1)
+
+        return res
+
+# ../codes/cnn/model.py:2
+    def forward(self, input):
+        if self.training is False:
+            return input
+        return input * torch.bernoulli((1-self.p)*torch.ones_like(input, device=input.device))
+
+# ../codes/cnn/model.py:3
+        # First convolutional block
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.bn1 = BatchNorm2d(64)
+        self.relu1 = nn.ReLU()
+        self.dropout1 = Dropout(p=drop_rate)
+        self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # Second convolutional block
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1)
+        self.bn2 = BatchNorm2d(128)
+        self.relu2 = nn.ReLU()
+        self.dropout2 = Dropout(p=drop_rate)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # Final Linear layer
+        self.fc = nn.Linear(128 * 8 * 8, num_classes)
+
+
+# ../codes/cnn/model.py:4
+        # Pass input through the layers
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        x = self.dropout1(x)
+        x = self.maxpool1(x)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu2(x)
+        x = self.dropout2(x)
+        x = self.maxpool2(x)
+
+        # Flatten the tensor for the linear layer
+        x = x.view(x.size(0), -1)
+        logits = self.fc(x)
+
+        pred = torch.argmax(logits, 1)
+        if y is None:
+            return pred
+
+        loss_val = self.loss(logits, y)
+        correct_pred = (pred.int() == y.int())
+        acc = torch.mean(correct_pred.float())
+
+        return loss_val, acc
+
+
+########################
+# References
+########################
+
+########################
+# Other Modifications
+########################
+# _codes/mlp/model.py -> ../codes/mlp/model.py
+# 7 +
+# 40 -     def __init__(self, drop_rate=0.5):
+# 55 +     def __init__(self, input_dim, hidden_dim, output_dim=10, drop_rate=0.5):
+# 65 +
+# 85 +
+# _codes/mlp/main.py -> ../codes/mlp/main.py
+# 14 +
+# 15 + import matplotlib.pyplot as plt
+# 37 + # get graph for results
+# 38 + epochs = [i for i in range(1, args.num_epochs+1)]
+# 39 + training_loss = []
+# 40 + training_acc = []
+# 41 + validation_loss = []
+# 42 + validation_acc = []
+# 108 -         mlp_model = Model(drop_rate=drop_rate)
+# 116 +         mlp_model = Model(input_dim = 32 * 32 * 3, hidden_dim = 512, drop_rate=args.drop_rate)
+# 112 -
+# 113 -         # model_path = os.path.join(args.train_dir, 'checkpoint_%d.pth.tar' % args.inference_version)
+# 114 -         # if os.path.exists(model_path):
+# 115 -         # 	mlp_model = torch.load(model_path)
+# 151 +             training_acc.append(train_acc)
+# 152 +             training_loss.append(train_loss)
+# 153 +             validation_acc.append(val_acc)
+# 154 +             validation_loss.append(val_loss)
+# 155 +
+# 160 +
+# 161 +         plt.subplot(2, 1, 1)
+# 162 +         plt.plot(epochs, training_acc, label="Training")
+# 163 +         plt.plot(epochs, validation_acc, label="Validate")
+# 164 +         plt.xlabel("Epoch #")
+# 165 +         plt.ylabel("accu")
+# 166 +         plt.legend()
+# 167 +         plt.subplot(2, 1, 2)
+# 168 +         plt.plot(epochs, training_loss, label="Training")
+# 169 +         plt.plot(epochs, validation_loss, label="Validate")
+# 170 +         plt.xlabel("Epoch #")
+# 171 +         plt.ylabel("loss")
+# 172 +         plt.legend()
+# 173 +         plt.savefig("result.png")
+# 174 +         print("result.png saved successfully")
+# _codes/mlp/load_data.py -> ../codes/mlp/load_data.py
+# 6 -
+# _codes/cnn/model.py -> ../codes/cnn/model.py
+# 2 -
+# 5 - from torch.nn import init
+# 5 ?                        ^^
+# 4 + from torch.nn import functional as F
+# 4 ?                      +++++ + ^^^^^^^
+# 6 +
+# 7 - class BatchNorm1d(nn.Module):
+# 7 ?                ^
+# 7 + class BatchNorm2d(nn.Module):
+# 7 ?                ^
+# 40 -     def __init__(self, drop_rate=0.5):
+# 54 +     def __init__(self, num_classes=10, drop_rate=0.5):
+# 54 ?                        ++++++++++++++++
+# 75 +         # Loss
+# 53 -         pred = torch.argmax(logits, 1)  # Calculate the prediction result
+# 54 -         if y is None:
+# 55 -             return pred
+# 56 -         loss = self.loss(logits, y)
+# 57 -         correct_pred = (pred.int() == y.int())
+# 58 -         acc = torch.mean(correct_pred.float())  # Calculate the accuracy in this mini-batch
+# 59 -
+# 60 -         return loss, acc
+# _codes/cnn/main.py -> ../codes/cnn/main.py
+# 14 +
+# 15 + import matplotlib.pyplot as plt
+# 36 +
+# 37 + # get graph for results
+# 38 + epochs = [i for i in range(1, args.num_epochs+1)]
+# 39 + training_loss = []
+# 40 + training_acc = []
+# 41 + validation_loss = []
+# 42 + validation_acc = []
+# 113 -         # model_path = os.path.join(args.train_dir, 'checkpoint_%d.pth.tar' % args.inference_version)
+# 114 -         # if os.path.exists(model_path):
+# 115 -         # 	cnn_model = torch.load(model_path)
+# 116 -
+# 152 +             training_acc.append(train_acc)
+# 153 +             training_loss.append(train_loss)
+# 154 +             validation_acc.append(val_acc)
+# 155 +             validation_loss.append(val_loss)
+# 156 +
+# 161 +
+# 162 +         plt.subplot(2, 1, 1)
+# 163 +         plt.plot(epochs, training_acc, label="Training")
+# 164 +         plt.plot(epochs, validation_acc, label="Validate")
+# 165 +         plt.xlabel("Epoch #")
+# 166 +         plt.ylabel("accu")
+# 167 +         plt.legend()
+# 168 +         plt.subplot(2, 1, 2)
+# 169 +         plt.plot(epochs, training_loss, label="Training")
+# 170 +         plt.plot(epochs, validation_loss, label="Validate")
+# 171 +         plt.xlabel("Epoch #")
+# 172 +         plt.ylabel("loss")
+# 173 +         plt.legend()
+# 174 +         plt.savefig("result.png")
+# 175 +         print("result.png saved successfully")
+# 168 -         print("test accuracy: {}".format(float(count) / len(X_test)))
+# 168 ?                                                                      -
+# 193 +         print("test accuracy: {}".format(float(count) / len(X_test)))
+
